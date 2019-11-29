@@ -1,5 +1,6 @@
 package com.opencore.kafka;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.serialization.Deserializer;
@@ -18,6 +19,18 @@ public class WrapperDeserializer implements Deserializer<Object> {
 
   @Override
   public void configure(Map<String, ?> configs, boolean isKey) {
+    String wrappedDeserializerClass = (String) configs.get("key.deserializer.wrapped.class");
+    try {
+      Class wrappedDeserializer = Class.forName(wrappedDeserializerClass);
+      try {
+        this.wrappedDeserializer = (Deserializer) wrappedDeserializer.getDeclaredConstructor().newInstance();
+      } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+        e.printStackTrace();
+      }
+    } catch (ClassNotFoundException e) {
+      throw new RuntimeException("Unable to instantiate wrapped Deserializer: " + e.getMessage());
+    }
+
     this.wrappedDeserializer = new WrapperDeserializer();
     wrappedDeserializer.configure(configs, isKey);
   }
